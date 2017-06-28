@@ -54,7 +54,7 @@ Summary: The Linux kernel
 %if 0%{?released_kernel}
 
 # Do we have a -stable update to apply?
-%define stable_update 5
+%define stable_update 7
 # Set rpm version accordingly
 %if 0%{?stable_update}
 %define stablerev %{stable_update}
@@ -614,7 +614,7 @@ Patch667: CVE-2017-7645.patch
 # CVE-2017-7477 rhbz 1445207 1445208
 Patch668: CVE-2017-7477.patch
 
-Patch26000: dapper-secure-kernel-patchset-4.11.5-2017-06-15.patch
+Patch26000: dapper-secure-kernel-patchset-4.11.7-2017-06-28.patch
 
 # END OF PATCH DEFINITIONS
 
