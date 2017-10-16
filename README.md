@@ -11,7 +11,7 @@ The build process is heavily based on the Fedora Linux kernel build process, and
 
 | Dapper Linux | Linux Version | Dapper Secure Kernel Patch |
 | ------------ | ------------- | -------------------------- |
-| 25           | 4.11.8        | 4.11.8-2017-06-30          |
+| 26           | 4.13.7        | 4.13.7-2017-10-15          |
 
 
 ### Packaging and Building a Source RPM for COPR
@@ -32,8 +32,8 @@ The rpm-setuptree will create a rpmbuild directory in your $HOME folder. If you'
 Next, we get the current kernel source RPM, install it to the rpmbuild dir and fetch the kernel's build dependancies
 
 ```bash
-$ yumdownloader --source kernel
-$ rpm -Uvh kernel-4.11.1-2.fc25.src.rpm
+$ dnf download --source kernel
+$ rpm -Uvh kernel-4.13.5-200.fc26.src.rpm
 $ sudo dnf builddep kernel
 $ sudo dnf install numactl-devel pesign
 ```
@@ -42,20 +42,20 @@ Now we fetch the latest patch from [Dapper Secure Kernel Patchset](https://dappe
 
 ```bash
 $ cd ~/rpmbuild/SOURCES
-$ wget https://dapperlinux.com/downloads/dapper-secure-kernel-patches-4.11.1-2017-05-16.patch
-$ wget https://dapperlinux.com/downloads/dapper-secure-kernel-patches-4.11.1-2017-05-16.patch.sig
+$ wget https://dapperlinux.com/downloads/dapper-secure-kernel-patches-4.13.7-2017-10-15.patch
+$ wget https://dapperlinux.com/downloads/dapper-secure-kernel-patches-4.13.7-2017-10-15.patch.sig
 ```
 
 Now we verify the signiture of the patch (you might have to [import](https://dapperlinux.com/patchset.html) the signing key first). Ensure the signature is good.
 
 ```bash
-$ gpg --verify dapper-secure-kernel-patches-4.11.1-2017-05-16.patch
+$ gpg --verify dapper-secure-kernel-patches-4.13.7-2017-10-15.patch
 ```
 
 Now, add the dapper-secure-kernel-patchset patch to the kernel.spec file. In the SPECS directory, edit kernel.spec and change
 
 ```spec
-#define buildid .local
+# define buildid .local
 ```
 
 to:
@@ -69,7 +69,7 @@ Since Dapper Linux is only interested in supporting x86_64 at this point in time
 Change
 
 ```spec
-%define nobuildarches i386 s390
+%define nobuildarches i386
 ```
 
 to:
@@ -124,7 +124,7 @@ Now we need to add the patch. So before:
 add:
 
 ```spec
-Patch26000: dapper-secure-kernel-patches-4.11.1-2017-05-16.patch
+Patch26000: dapper-secure-kernel-patchset-4.13.7-2017-10-15.patch
 ```
 
 Then try and apply the patch. Note the -bp flag on rpmbuild will run the %prep section of the .spec file, which does the uncompressing and patching.
@@ -139,11 +139,11 @@ error: patch failed: arch/x86/kernel/ioport.c:32
 error: arch/x86/kernel/ioport.c: patch does not apply
 error: patch failed: drivers/acpi/custom_method.c:29
 error: drivers/acpi/custom_method.c: patch does not apply
-error: patch failed: drivers/platform/x86/asus-wmi.c:1900
+error: patch failed: drivers/platform/x86/asus-wmi.c:1905
 error: drivers/platform/x86/asus-wmi.c: patch does not apply
-error: patch failed: init/Kconfig:1183
+error: patch failed: init/Kconfig:879
 error: init/Kconfig: patch does not apply
-Patch failed at 0123 Dapper Secure Kernel Patches 4.11
+Patch failed at 0107 Dapper Secure Kernel Patchset 4.13.7
 [...]
 ```
 
@@ -152,14 +152,14 @@ It is completly normal to fail at this stage. Most of these patches will fail be
 ```bash
 $ cd ~/rpmbuild/SOURCES
 $ grep -Rin ioport\.c .
+./dapper-secure-kernel-patchset-4.13.7-2017-10-15.patch:281: arch/x86/kernel/ioport.c                           |    17 +-
+./dapper-secure-kernel-patchset-4.13.7-2017-10-15.patch:21391:diff --git a/arch/x86/kernel/ioport.c b/arch/x86/kernel/ioport.c
+./dapper-secure-kernel-patchset-4.13.7-2017-10-15.patch:21393:--- a/arch/x86/kernel/ioport.c
+./dapper-secure-kernel-patchset-4.13.7-2017-10-15.patch:21394:+++ b/arch/x86/kernel/ioport.c
 ./efi-lockdown.patch:888: arch/x86/kernel/ioport.c | 4 ++--
 ./efi-lockdown.patch:892:diff --git a/arch/x86/kernel/ioport.c b/arch/x86/kernel/ioport.c
 ./efi-lockdown.patch:894:--- a/arch/x86/kernel/ioport.c
 ./efi-lockdown.patch:895:+++ b/arch/x86/kernel/ioport.c
-./dapper-secure-kernel-patches-4.11.1-2017-05-16.patch:578: arch/x86/kernel/ioport.c                           |    17 +-
-./dapper-secure-kernel-patches-4.11.1-2017-05-16.patch:36391:diff --git a/arch/x86/kernel/ioport.c b/arch/x86/kernel/ioport.c
-./dapper-secure-kernel-patches-4.11.1-2017-05-16.patch:36393:--- a/arch/x86/kernel/ioport.c
-./dapper-secure-kernel-patches-4.11.1-2017-05-16.patch:36394:+++ b/arch/x86/kernel/ioport.c
 ```
 
 We can see the efi-lockdown.patch is causing problems, so we can comment it out in the kernel.spec file. 
@@ -173,12 +173,9 @@ You can continue to find all of the other collisions. Here is the list that Dapp
 
 ```spec
 # Fails to patch with Dapper Secure Kernel Patches
-#Patch475: x86-Lock-down-IO-port-access-when-module-security-is.patch
-#Patch476: ACPI-Limit-access-to-custom_method.patch
-#Patch477: asus-wmi-Restrict-debugfs-interface-when-module-load.patch
-#Patch478: Restrict-dev-mem-and-dev-kmem-when-module-loading-is.patch
-#Patch486: hibernate-Disable-in-a-signed-modules-environment.patch
-#Patch494: disable-i8042-check-on-apple-mac.patch
+#Patch119: criu-no-expert.patch
+#Patch201: efi-lockdown.patch
+#Patch210: disable-i8042-check-on-apple-mac.patch
 ```
 
 Now when we run the patch command we just find:
@@ -188,9 +185,7 @@ $ rpmbuild -bp kernel.spec
 [...]
 error: patch failed: arch/x86/entry/vdso/Makefile:170
 error: arch/x86/entry/vdso/Makefile: patch does not apply
-error: patch failed: init/Kconfig:1168
-error: init/Kconfig: patch does not apply
-Patch failed at 0081 
+Patch failed at 0082 Dapper Secure Kernel Patchset 4.13.7
 [...]
 ```
 
@@ -199,11 +194,11 @@ Now, both Fedora and Dapper Secure Kernel patches both patch the vsdo Makefile, 
 We need to find which patch file is in disagreement with the Dapper Secure Kernel patch, and then decide which patch we want to ship. So we will do a grep over the source files like so:
 
 ```bash
-grep -Rin "a/arch/x86/entry/vdso/Makefile"
-kbuild-AFTER_LINK.patch:93:diff --git a/arch/x86/entry/vdso/Makefile b/arch/x86/entry/vdso/Makefile
-kbuild-AFTER_LINK.patch:95:--- a/arch/x86/entry/vdso/Makefile
-dapper-secure-kernel-patches-4.11.1-2017-05-16.patch:25528:diff --git a/arch/x86/entry/vdso/Makefile b/arch/x86/entry/vdso/Makefile
-dapper-secure-kernel-patches-4.11.1-2017-05-16.patch:25530:--- a/arch/x86/entry/vdso/Makefile
+grep -Rin "a/arch/x86/entry/vdso/Makefile" .
+./kbuild-AFTER_LINK.patch:93:diff --git a/arch/x86/entry/vdso/Makefile b/arch/x86/entry/vdso/Makefile
+./kbuild-AFTER_LINK.patch:95:--- a/arch/x86/entry/vdso/Makefile
+./dapper-secure-kernel-patchset-4.13.7-2017-10-15.patch:10706:diff --git a/arch/x86/entry/vdso/Makefile b/arch/x86/entry/vdso/Makefile
+./dapper-secure-kernel-patchset-4.13.7-2017-10-15.patch:10708:--- a/arch/x86/entry/vdso/Makefile
 ```
 
 Since the Dapper Secure Kernel patches version is much more in depth than the simple changes to provide some compiler warning from Fedora, we will remove the vsdo patch from Fedora. Take note from grep, since it tells you the line you need to modify. I recommend using vim, and using the dd command to delete a line at a time.
@@ -228,32 +223,6 @@ index d540966..eeb47b6 100644
  
  VDSO_LDFLAGS = -fPIC -shared $(call cc-ldoption, -Wl$(comma)--hash-style=both) \
         $(call cc-ldoption, -Wl$(comma)--build-id) -Wl,-Bsymbolic $(LTO_CFLAGS)
-```
-
-Next up is fixing the Kconfig file. It seems Fedora and Dapper Secure Kernel patches double up on CHECKPOINT_RESTORE
-
-We find what Line it belongs to by searching for "CHECKPOINT_RESTORE"
-
-```bash
-$ grep -Rin "CHECKPOINT_RESTORE" dapper-secure-kernel-patches-4.11.1-2017-05-16.patch 
-146136: config CHECKPOINT_RESTORE
-151970: 	if (IS_ENABLED(CONFIG_CHECKPOINT_RESTORE) &&
-155459: 	depends on CHECKPOINT_RESTORE && HAVE_ARCH_SOFT_DIRTY && PROC_FS
-
-```
-
-We want to go to where it is defined, ie on line 139340:
-
-```bash
-$ vim dapper-secure-kernel-patches-4.11.1-2017-05-16.patch +146136
-@@ -1158,6 +1163,7 @@ endif # CGROUPS
- config CHECKPOINT_RESTORE
-    bool "Checkpoint/restore support" if EXPERT
-    select PROC_CHILDREN
-+   depends on !GRKERNSEC
-    default n
-    help
-      Enables additional kernel features in a sake of checkpoint/restore.
 ```
 
 There is also a bug in the kernel.spec file where it will try and merge and then run newoptions over build configs that we aren't even going to build which prevents us from continuing. We can fix it by changing:
@@ -297,7 +266,7 @@ error: Bad exit status from /var/tmp/rpm-tmp.ioWAuT (%prep)
 This just means that there are options that are required to be configured in the kernel that haven't been configured yet. Namely, the Dapper Secure Kernel options haven't been configured yet. So, we will go to the build directory and run make menuconfig to select what Dapper Secure Kernel Options options we require. Dapper Secure Kernel options live in Security -> Grsecurity.
 
 ```bash
-$ cd ~/rpmbuild/BUILD/kernel-4.11.fc25/linux-4.11.1-2.dappersec.fc25.x86_64
+$ cd ~/rpmbuild/BUILD/kernel-4.13.fc26/linux-4.13.7-200.dappersec.fc26.x86_64/
 $ make menuconfig
 ```
 
@@ -341,7 +310,7 @@ And finally, we can generate a source RPM for the copr or koji build system
 
 ```bash
 $ rpmbuild -bs kernel.spec
-Wrote: ~/rpmbuild/SRPMS/dapper-secure-kernel-4.11.1-2.dappersec.fc25.src.rpm
+Wrote: ~/rpmbuild/SRPMS/dapper-secure-kernel-4.13.7-200.dappersec.fc26.src.rpm
 ```
 
 It's probably worth doing a test build before submitting it to a build server, so we can weed out any last minute compilation bugs. The following will build just the dapper-secure-kernel, dapper-secure-kernel-core, dapper-secure-kernel-modules and dapper-secure-kernel-modules-extra packages.

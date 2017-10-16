@@ -42,19 +42,19 @@ Summary: The Linux kernel
 # For non-released -rc kernels, this will be appended after the rcX and
 # gitX tags, so a 3 here would become part of release "0.rcX.gitX.3"
 #
-%global baserelease 2
+%global baserelease 200
 %global fedora_build %{baserelease}
 
 # base_sublevel is the kernel version we're starting with and patching
 # on top of -- for example, 3.1-rc7-git1 starts with a 3.0 base,
 # which yields a base_sublevel of 0.
-%define base_sublevel 11
+%define base_sublevel 13
 
 ## If this is a released kernel ##
 %if 0%{?released_kernel}
 
 # Do we have a -stable update to apply?
-%define stable_update 8
+%define stable_update 7
 # Set rpm version accordingly
 %if 0%{?stable_update}
 %define stablerev %{stable_update}
@@ -218,8 +218,7 @@ Summary: The Linux kernel
 %define all_x86 i386 i686
 
 %if %{with_vdso_install}
-# These arches install vdso/ directories.
-%define vdso_arches %{all_x86} x86_64 %{power64} s390x aarch64
+%define use_vdso 1
 %endif
 
 # Overrides for generic default options
@@ -287,6 +286,7 @@ Summary: The Linux kernel
 
 %ifarch %{arm}
 %define all_arch_configs kernel-%{version}-arm*.config
+%define skip_nonpae_vdso 1
 %define asmarch arm
 %define hdrarch arm
 %define pae lpae
@@ -347,6 +347,19 @@ Summary: The Linux kernel
 
 # Architectures we build tools/cpupower on
 %define cpupowerarchs %{ix86} x86_64 %{power64} %{arm} aarch64
+
+%if %{use_vdso}
+
+%if 0%{?skip_nonpae_vdso}
+%define _use_vdso 0
+%else
+%define _use_vdso 1
+%endif
+
+%else
+%define _use_vdso 0
+%endif
+
 
 #
 # Packages that need to be installed before the kernel is, because the %%post
@@ -486,7 +499,7 @@ Source5000: patch-4.%{base_sublevel}-git%{gitrev}.xz
 ## Patches needed for building this package
 
 # build tweak for build ID magic, even for -vanilla
-#Patch001: kbuild-AFTER_LINK.patch
+Patch001: kbuild-AFTER_LINK.patch
 
 ## compile fixes
 
@@ -498,123 +511,165 @@ Patch002: 0001-iio-Use-event-header-from-kernel-tree.patch
 # Git trees.
 
 # Standalone patches
+# 100 - Generic long running patches
 
-# a tempory patch for QCOM hardware enablement. Will be gone by end of 2016/F-26 GA
-Patch420: qcom-QDF2432-tmp-errata.patch
+Patch110: lib-cpumask-Make-CPUMASK_OFFSTACK-usable-without-deb.patch
 
-# http://www.spinics.net/lists/arm-kernel/msg490981.html
-Patch421: geekbox-v4-device-tree-support.patch
+Patch111: input-kill-stupid-messages.patch
+
+Patch112: die-floppy-die.patch
+
+Patch113: no-pcspkr-modalias.patch
+
+Patch114: silence-fbcon-logo.patch
+
+Patch115: Kbuild-Add-an-option-to-enable-GCC-VTA.patch
+
+Patch116: crash-driver.patch
+
+Patch117: lis3-improve-handling-of-null-rate.patch
+
+Patch118: scsi-sd_revalidate_disk-prevent-NULL-ptr-deref.patch
+
+#Patch119: criu-no-expert.patch
+
+Patch120: ath9k-rx-dma-stop-check.patch
+
+Patch121: xen-pciback-Don-t-disable-PCI_COMMAND-on-PCI-device-.patch
+
+Patch122: Input-synaptics-pin-3-touches-when-the-firmware-repo.patch
+
+# This no longer applies, let's see if it needs to be updated
+# Patch123: firmware-Drop-WARN-from-usermodehelper_read_trylock-.patch
+
+# 200 - x86 / secureboot
+
+#Patch201: efi-lockdown.patch
+
+Patch202: KEYS-Allow-unrestricted-boot-time-addition-of-keys-t.patch
+
+Patch203: Add-EFI-signature-data-types.patch
+
+Patch204: Add-an-EFI-signature-blob-parser-and-key-loader.patch
+
+Patch205: MODSIGN-Import-certificates-from-UEFI-Secure-Boot.patch
+
+Patch206: MODSIGN-Support-not-importing-certs-from-db.patch
+
+#Patch210: disable-i8042-check-on-apple-mac.patch
+
+Patch211: drm-i915-hush-check-crtc-state.patch
+
+# 300 - ARM patches
+
+# a tempory patch for QCOM hardware enablement. Will be gone by F-26 GA
+Patch301: qcom-QDF2432-tmp-errata.patch
 
 # http://www.spinics.net/lists/linux-tegra/msg26029.html
-Patch422: usb-phy-tegra-Add-38.4MHz-clock-table-entry.patch
+Patch302: usb-phy-tegra-Add-38.4MHz-clock-table-entry.patch
 
 # Fix OMAP4 (pandaboard)
-Patch423: arm-revert-mmc-omap_hsmmc-Use-dma_request_chan-for-reque.patch
-
-# Not particularly happy we don't yet have a proper upstream resolution this is the right direction
-# https://www.spinics.net/lists/arm-kernel/msg535191.html
-Patch424: arm64-mm-Fix-memmap-to-be-initialized-for-the-entire-section.patch
+Patch303: arm-revert-mmc-omap_hsmmc-Use-dma_request_chan-for-reque.patch
 
 # http://patchwork.ozlabs.org/patch/587554/
-Patch425: ARM-tegra-usb-no-reset.patch
+Patch304: ARM-tegra-usb-no-reset.patch
 
-Patch426: AllWinner-h3.patch
-Patch427: AllWinner-net-emac.patch
+Patch305: allwinner-net-emac.patch
 
-# http://www.spinics.net/lists/linux-bluetooth/msg70169.html
-# https://www.spinics.net/lists/devicetree/msg170619.html
-Patch428: ti-bluetooth.patch
-
-Patch429: arm64-hikey-fixes.patch
-
-# http://www.spinics.net/lists/devicetree/msg163238.html
-Patch430: bcm2837-initial-support.patch
-
-Patch431: arm-rk3288-tinker.patch
-
-# http://www.spinics.net/lists/dri-devel/msg132235.html
-Patch433: drm-vc4-Fix-OOPSes-from-trying-to-cache-a-partially-constructed-BO..patch
-
-# bcm283x mmc for wifi http://www.spinics.net/lists/arm-kernel/msg567077.html
-Patch434: bcm283x-mmc-bcm2835.patch
-
-# Upstream fixes for i2c/serial/ethernet MAC addresses
-Patch435: bcm283x-fixes.patch
-
-# https://lists.freedesktop.org/archives/dri-devel/2017-February/133823.html
-Patch436: vc4-fix-vblank-cursor-update-issue.patch
-
-Patch437: bcm283x-hdmi-audio.patch
+# https://patchwork.kernel.org/patch/9967397/
+Patch306: tegra-Use-different-MSI-target-address-for-Tegra20.patch
 
 # https://www.spinics.net/lists/arm-kernel/msg554183.html
-Patch438: arm-imx6-hummingboard2.patch
+Patch307: arm-imx6-hummingboard2.patch
 
-Patch440: arm64-Add-option-of-13-for-FORCE_MAX_ZONEORDER.patch
+Patch308: arm64-Add-option-of-13-for-FORCE_MAX_ZONEORDER.patch
 
-Patch460: lib-cpumask-Make-CPUMASK_OFFSTACK-usable-without-deb.patch
+# https://patchwork.kernel.org/patch/9815555/
+# https://patchwork.kernel.org/patch/9815651/
+# https://patchwork.kernel.org/patch/9819885/
+# https://patchwork.kernel.org/patch/9820417/
+# https://patchwork.kernel.org/patch/9821151/
+# https://patchwork.kernel.org/patch/9821157/
+Patch310: qcom-msm89xx-fixes.patch
 
-Patch466: input-kill-stupid-messages.patch
+# https://patchwork.kernel.org/patch/9831825/
+# https://patchwork.kernel.org/patch/9833721/
+Patch311: arm-tegra-fix-gpu-iommu.patch
 
-Patch467: die-floppy-die.patch
+# https://www.spinics.net/lists/linux-arm-msm/msg28203.html
+Patch312: qcom-display-iommu.patch
 
-Patch468: no-pcspkr-modalias.patch
+# https://patchwork.kernel.org/patch/9839803/
+Patch313: qcom-Force-host-mode-for-USB-on-apq8016-sbc.patch
 
-Patch470: silence-fbcon-logo.patch
+# https://patchwork.kernel.org/patch/9850189/
+Patch314: qcom-msm-ci_hdrc_msm_probe-missing-of_node_get.patch
 
-Patch471: Kbuild-Add-an-option-to-enable-GCC-VTA.patch
+Patch320: bcm283x-vc4-fixes.patch
 
-Patch472: crash-driver.patch
-# Fails to patch with Dapper Secure Kernel Patches
-#Patch473: efi-lockdown.patch
+# Fix USB on the RPi https://patchwork.kernel.org/patch/9879371/
+Patch321: bcm283x-dma-mapping-skip-USB-devices-when-configuring-DMA-during-probe.patch
 
-Patch487: Add-EFI-signature-data-types.patch
+# Updat3 move of bcm2837, landed in 4.14
+Patch322: bcm2837-move-dt.patch
 
-Patch488: Add-an-EFI-signature-blob-parser-and-key-loader.patch
+# https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git/commit/?h=next-20170912&id=723288836628bc1c0855f3bb7b64b1803e4b9e4a
+Patch324: arm-of-restrict-dma-configuration.patch
 
-# This doesn't apply. It seems like it could be replaced by
-# https://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/commit/?id=5ac7eace2d00eab5ae0e9fdee63e38aee6001f7c
-# which has an explicit line about blacklisting
-Patch489: KEYS-Add-a-system-blacklist-keyring.patch
+# 400 - IBM (ppc/s390x) patches
 
-Patch490: MODSIGN-Import-certificates-from-UEFI-Secure-Boot.patch
-
-Patch491: MODSIGN-Support-not-importing-certs-from-db.patch
-
-Patch493: drm-i915-hush-check-crtc-state.patch
-
-#Patch494: disable-i8042-check-on-apple-mac.patch
-
-Patch495: lis3-improve-handling-of-null-rate.patch
-
-Patch497: scsi-sd_revalidate_disk-prevent-NULL-ptr-deref.patch
-
-Patch498: criu-no-expert.patch
-
-Patch499: ath9k-rx-dma-stop-check.patch
-
-Patch500: xen-pciback-Don-t-disable-PCI_COMMAND-on-PCI-device-.patch
-
-Patch501: Input-synaptics-pin-3-touches-when-the-firmware-repo.patch
-
-Patch502: firmware-Drop-WARN-from-usermodehelper_read_trylock-.patch
-
-# Patch503: drm-i915-turn-off-wc-mmaps.patch
-
-Patch509: MODSIGN-Don-t-try-secure-boot-if-EFI-runtime-is-disa.patch
-
-#CVE-2016-3134 rhbz 1317383 1317384
-Patch665: netfilter-x_tables-deal-with-bogus-nextoffset-values.patch
-
-#rhbz 1435154
-Patch666: powerpc-prom-Increase-RMA-size-to-512MB.patch
-
-# CVE-2017-7645 rhbz 1443615 1443617
-Patch667: CVE-2017-7645.patch
+# 500 - Temp fixes/CVEs etc
 
 # CVE-2017-7477 rhbz 1445207 1445208
-Patch668: CVE-2017-7477.patch
+Patch502: CVE-2017-7477.patch
 
-Patch26000: dapper-secure-kernel-patchset-4.11.8-2017-06-30.patch
+# 600 - Patches for improved Bay and Cherry Trail device support
+# Below patches are submitted upstream, awaiting review / merging
+Patch601: 0001-Input-gpio_keys-Allow-suppression-of-input-events-fo.patch
+Patch602: 0002-Input-soc_button_array-Suppress-power-button-presses.patch
+Patch610: 0010-Input-silead-Add-support-for-capactive-home-button-f.patch
+Patch611: 0011-Input-goodix-Add-support-for-capacitive-home-button.patch
+# These patches are queued for 4.14 and can be dropped on rebase to 4.14-rc1
+Patch603: 0001-power-supply-max17042_battery-Add-support-for-ACPI-e.patch
+Patch604: 0002-power-supply-max17042_battery-Fix-ACPI-interrupt-iss.patch
+Patch613: 0013-iio-accel-bmc150-Add-support-for-BOSC0200-ACPI-devic.patch
+Patch615: 0015-i2c-cht-wc-Add-Intel-Cherry-Trail-Whiskey-Cove-SMBUS.patch
+
+# rhbz 1431375
+#Patch703: HID-rmi-Make-sure-the-HID-device-is-opened-on-resume.patch
+#Patch704: input-rmi4-remove-the-need-for-artifical-IRQ.patch
+
+# rhbz 1476467
+Patch706: Fix-for-module-sig-verification.patch
+
+# rhbz 1485086
+Patch710: pci-mark-amd-stoney-gpu-ats-as-broken.patch
+
+# CVE-2017-13693 rhbz 1485346 1485356
+Patch713: acpi-acpica-fix-acpi-operand-cache-leak-in-dsutils.c.patch
+
+# CVE-2017-13694 rhbz 1485348
+Patch714: V4-acpi-acpica-fix-acpi-parse-and-parseext-cache-leaks.patch 
+
+# CVE-2017-13695 rhbz 1485349
+Patch715: acpi-acpica-fix-acpi-operand-cache-leak-in-nseval.c.patch
+
+# Should fix our QXL issues (Doesn't)
+Patch718: qxl-fixes.patch
+
+# rhbz 1493498
+Patch723: 0001-fs-locks-Remove-fl_nspid-and-use-fs-specific-l_pid-f.patch
+
+# rhbz 1432684
+Patch724: 1-3-net-set-tb--fast_sk_family.patch
+Patch725: 2-3-net-use-inet6_rcv_saddr-to-compare-sockets.patch
+Patch726: 3-3-inet-fix-improper-empty-comparison.patch
+
+
+# rhbz 1497861
+Patch629: 0001-platform-x86-peaq-wmi-Add-DMI-check-before-binding-t.patch
+
+Patch26000: dapper-secure-kernel-patchset-4.13.7-2017-10-15.patch
 
 # END OF PATCH DEFINITIONS
 
@@ -755,6 +810,7 @@ Obsoletes: cpufreq-utils < 1:009-0.6.p1
 Obsoletes: cpufrequtils < 1:009-0.6.p1
 Obsoletes: cpuspeed < 1:1.5-16
 Requires: kernel-tools-libs = %{version}-%{release}
+%define __requires_exclude ^%{_bindir}/python
 %description -n kernel-tools
 This package contains the tools/ directory from the kernel source
 and the supporting documentation.
@@ -1313,9 +1369,10 @@ cp_vmlinux()
 BuildKernel() {
     MakeTarget=$1
     KernelImage=$2
-    Flavour=$3
+    Flavour=$4
+    DoVDSO=$3
     Flav=${Flavour:++${Flavour}}
-    InstallName=${4:-vmlinuz}
+    InstallName=${5:-vmlinuz}
 
     # Pick the right config file for the kernel we're building
     Config=kernel-%{version}-%{_target_cpu}${Flavour:+-${Flavour}}.config
@@ -1413,16 +1470,16 @@ BuildKernel() {
     # we'll get it from the linux-firmware package and we don't want conflicts
     %{make} -s ARCH=$Arch INSTALL_MOD_PATH=$RPM_BUILD_ROOT modules_install KERNELRELEASE=$KernelVer mod-fw=
 
-%ifarch %{vdso_arches}
-    %{make} -s ARCH=$Arch INSTALL_MOD_PATH=$RPM_BUILD_ROOT vdso_install KERNELRELEASE=$KernelVer
-    if [ ! -s ldconfig-kernel.conf ]; then
-      echo > ldconfig-kernel.conf "\
-# Placeholder file, no vDSO hwcap entries used in this kernel."
+    if [ $DoVDSO -ne 0 ]; then
+        %{make} -s ARCH=$Arch INSTALL_MOD_PATH=$RPM_BUILD_ROOT vdso_install KERNELRELEASE=$KernelVer
+        if [ ! -s ldconfig-kernel.conf ]; then
+          echo > ldconfig-kernel.conf "\
+    # Placeholder file, no vDSO hwcap entries used in this kernel."
+        fi
+        %{__install} -D -m 444 ldconfig-kernel.conf \
+            $RPM_BUILD_ROOT/etc/ld.so.conf.d/kernel-$KernelVer.conf
+        rm -rf $RPM_BUILD_ROOT/lib/modules/$KernelVer/vdso/.build-id
     fi
-    %{__install} -D -m 444 ldconfig-kernel.conf \
-        $RPM_BUILD_ROOT/etc/ld.so.conf.d/kernel-$KernelVer.conf
-    rm -rf $RPM_BUILD_ROOT/lib/modules/$KernelVer/vdso/.build-id
-%endif
 
     # And save the headers/makefiles etc for building modules against
     #
@@ -1657,20 +1714,21 @@ mkdir -p $RPM_BUILD_ROOT%{_libexecdir}
 
 cd linux-%{KVERREL}
 
+
 %if %{with_debug}
-BuildKernel %make_target %kernel_image debug
+BuildKernel %make_target %kernel_image %{_use_vdso} debug
 %endif
 
 %if %{with_pae_debug}
-BuildKernel %make_target %kernel_image %{pae}debug
+BuildKernel %make_target %kernel_image %{use_vdso} %{pae}debug
 %endif
 
 %if %{with_pae}
-BuildKernel %make_target %kernel_image %{pae}
+BuildKernel %make_target %kernel_image %{use_vdso} %{pae}
 %endif
 
 %if %{with_up}
-BuildKernel %make_target %kernel_image
+BuildKernel %make_target %kernel_image %{_use_vdso}
 %endif
 
 %global perf_make \
@@ -1814,7 +1872,7 @@ find $RPM_BUILD_ROOT/usr/tmp-headers/include \
 # Copy all the architectures we care about to their respective asm directories
 for arch in arm arm64 powerpc s390 x86 ; do
 mkdir -p $RPM_BUILD_ROOT/usr/${arch}-linux-gnu/include
-mv $RPM_BUILD_ROOT/usr/tmp-headers/include/asm-${arch} $RPM_BUILD_ROOT/usr/${arch}-linux-gnu/include/asm
+mv $RPM_BUILD_ROOT/usr/tmp-headers/include/arch-${arch}/asm $RPM_BUILD_ROOT/usr/${arch}-linux-gnu/include/
 cp -a $RPM_BUILD_ROOT/usr/tmp-headers/include/asm-generic $RPM_BUILD_ROOT/usr/${arch}-linux-gnu/include/.
 done
 
@@ -1845,6 +1903,9 @@ rm -rf %{buildroot}%{_docdir}/perf-tip
 mkdir -p %{buildroot}/%{_mandir}/man1
 pushd %{buildroot}/%{_mandir}/man1
 tar -xf %{SOURCE10}
+%if !%{with_tools}
+    rm -f kvm_stat.1
+%endif
 popd
 %endif
 
@@ -1888,6 +1949,9 @@ make INSTALL_ROOT=%{buildroot} install
 popd
 pushd tools/gpio
 make DESTDIR=%{buildroot} install
+popd
+pushd tools/kvm/kvm_stat
+make INSTALL_ROOT=%{buildroot} install-tools
 popd
 %endif
 
@@ -2086,6 +2150,8 @@ fi
 %{_bindir}/lsgpio
 %{_bindir}/gpio-hammer
 %{_bindir}/gpio-event-mon
+%{_mandir}/man1/kvm_stat*
+%{_bindir}/kvm_stat
 %endif
 
 %if %{with_debuginfo}
@@ -2118,68 +2184,298 @@ fi
 #	%%kernel_variant_files [-k vmlinux] <condition> <subpackage>
 #
 %define kernel_variant_files(k:) \
-%if %{1}\
-%{expand:%%files -f kernel-%{?2:%{2}-}core.list %{?2:%{2}-}core}\
+%if %{2}\
+%{expand:%%files -f kernel-%{?3:%{3}-}core.list %{?3:%{3}-}core}\
 %defattr(-,root,root)\
 %{!?_licensedir:%global license %%doc}\
 %license linux-%{KVERREL}/COPYING\
-/lib/modules/%{KVERREL}%{?2:+%{2}}/%{?-k:%{-k*}}%{!?-k:vmlinuz}\
-%ghost /%{image_install_path}/%{?-k:%{-k*}}%{!?-k:vmlinuz}-%{KVERREL}%{?2:+%{2}}\
-/lib/modules/%{KVERREL}%{?2:+%{2}}/.vmlinuz.hmac \
-%ghost /%{image_install_path}/.vmlinuz-%{KVERREL}%{?2:+%{2}}.hmac \
+/lib/modules/%{KVERREL}%{?3:+%{3}}/%{?-k:%{-k*}}%{!?-k:vmlinuz}\
+%ghost /%{image_install_path}/%{?-k:%{-k*}}%{!?-k:vmlinuz}-%{KVERREL}%{?3:+%{3}}\
+/lib/modules/%{KVERREL}%{?3:+%{3}}/.vmlinuz.hmac \
+%ghost /%{image_install_path}/.vmlinuz-%{KVERREL}%{?3:+%{3}}.hmac \
 %ifarch %{arm} aarch64\
-/lib/modules/%{KVERREL}%{?2:+%{2}}/dtb \
-%ghost /%{image_install_path}/dtb-%{KVERREL}%{?2:+%{2}} \
+/lib/modules/%{KVERREL}%{?3:+%{3}}/dtb \
+%ghost /%{image_install_path}/dtb-%{KVERREL}%{?3:+%{3}} \
 %endif\
-%attr(600,root,root) /lib/modules/%{KVERREL}%{?2:+%{2}}/System.map\
-%ghost /boot/System.map-%{KVERREL}%{?2:+%{2}}\
-/lib/modules/%{KVERREL}%{?2:+%{2}}/config\
-%ghost /boot/config-%{KVERREL}%{?2:+%{2}}\
-%ghost /boot/initramfs-%{KVERREL}%{?2:+%{2}}.img\
+%attr(600,root,root) /lib/modules/%{KVERREL}%{?3:+%{3}}/System.map\
+%ghost /boot/System.map-%{KVERREL}%{?3:+%{3}}\
+/lib/modules/%{KVERREL}%{?3:+%{3}}/config\
+%ghost /boot/config-%{KVERREL}%{?3:+%{3}}\
+%ghost /boot/initramfs-%{KVERREL}%{?3:+%{3}}.img\
 %dir /lib/modules\
-%dir /lib/modules/%{KVERREL}%{?2:+%{2}}\
-%dir /lib/modules/%{KVERREL}%{?2:+%{2}}/kernel\
-/lib/modules/%{KVERREL}%{?2:+%{2}}/build\
-/lib/modules/%{KVERREL}%{?2:+%{2}}/source\
-/lib/modules/%{KVERREL}%{?2:+%{2}}/updates\
-%ifarch %{vdso_arches}\
-/lib/modules/%{KVERREL}%{?2:+%{2}}/vdso\
-/etc/ld.so.conf.d/kernel-%{KVERREL}%{?2:+%{2}}.conf\
+%dir /lib/modules/%{KVERREL}%{?3:+%{3}}\
+%dir /lib/modules/%{KVERREL}%{?3:+%{3}}/kernel\
+/lib/modules/%{KVERREL}%{?3:+%{3}}/build\
+/lib/modules/%{KVERREL}%{?3:+%{3}}/source\
+/lib/modules/%{KVERREL}%{?3:+%{3}}/updates\
+%if %{1}\
+/lib/modules/%{KVERREL}%{?3:+%{3}}/vdso\
+/etc/ld.so.conf.d/kernel-%{KVERREL}%{?3:+%{3}}.conf\
 %endif\
-/lib/modules/%{KVERREL}%{?2:+%{2}}/modules.*\
-%{expand:%%files -f kernel-%{?2:%{2}-}modules.list %{?2:%{2}-}modules}\
+/lib/modules/%{KVERREL}%{?3:+%{3}}/modules.*\
+%{expand:%%files -f kernel-%{?3:%{3}-}modules.list %{?3:%{3}-}modules}\
 %defattr(-,root,root)\
-%{expand:%%files %{?2:%{2}-}devel}\
+%{expand:%%files %{?3:%{3}-}devel}\
 %defattr(-,root,root)\
 %defverify(not mtime)\
-/usr/src/kernels/%{KVERREL}%{?2:+%{2}}\
-%{expand:%%files %{?2:%{2}-}modules-extra}\
+/usr/src/kernels/%{KVERREL}%{?3:+%{3}}\
+%{expand:%%files %{?3:%{3}-}modules-extra}\
 %defattr(-,root,root)\
-/lib/modules/%{KVERREL}%{?2:+%{2}}/extra\
+/lib/modules/%{KVERREL}%{?3:+%{3}}/extra\
 %if %{with_debuginfo}\
 %ifnarch noarch\
-%{expand:%%files -f debuginfo%{?2}.list %{?2:%{2}-}debuginfo}\
+%{expand:%%files -f debuginfo%{?3}.list %{?3:%{3}-}debuginfo}\
 %defattr(-,root,root)\
 %endif\
 %endif\
-%if %{?2:1} %{!?2:0}\
-%{expand:%%files %{2}}\
+%if %{?3:1} %{!?3:0}\
+%{expand:%%files %{3}}\
 %defattr(-,root,root)\
 %endif\
 %endif\
 %{nil}
 
-
-%kernel_variant_files %{with_up}
-%kernel_variant_files %{with_debug} debug
-%kernel_variant_files %{with_pae} %{pae}
-%kernel_variant_files %{with_pae_debug} %{pae}debug
+%kernel_variant_files  %{_use_vdso} %{with_up}
+%kernel_variant_files  %{_use_vdso} %{with_debug} debug
+%kernel_variant_files %{use_vdso} %{with_pae} %{pae}
+%kernel_variant_files %{use_vdso} %{with_pae_debug} %{pae}debug
 
 # plz don't put in a version string unless you're going to tag
 # and build.
 #
 #
 %changelog
+* Thu Oct 05 2017 Laura Abbott <labbott@fedoraproject.org> - 4.13.5-200
+- Linux v4.13.5
+- Fix for peaq_wmi nul spew (rhbz 1497861)
+
+* Thu Sep 28 2017 Laura Abbott <labbott@redhat.com> - 4.13.4-200
+- Linux v4.13.4
+
+* Mon Sep 25 2017 Peter Robinson <pbrobinson@fedoraproject.org>
+- Add patch to fix PCI on tegra20
+
+* Thu Sep 21 2017 Laura Abbott <labbott@redhat.com> - 4.13.3-200
+- Linux v4.13.3
+- Fix NFS locks (rhbz 1493498)
+- Fix bindport regression (rhbz 1432684)
+
+* Wed Sep 20 2017 Justin M. Forbes <jforbes@fedoraproject.org> - 4.12.14-300
+- Linux v4.12.14
+- Fixes 1493435 1493436
+- Fixes CVE-2017-14497 (rhbz 1492593 1492594)
+
+* Mon Sep 18 2017 Justin M. Forbes <jforbes@redhat.com>
+- Fixes for QXL (rhbz 1462381)
+
+* Thu Sep 14 2017 Justin M. Forbes <jforbes@redhat.com> - 4.12.13-300
+- Linux v4.12.13
+
+* Wed Sep 13 2017 Justin M. Forbes <jforbes@fedoraproject.org>
+- Fix CVE-2017-12154 (rhbz 1491224 1491231)
+- Fix CVE-2017-12153 (rhbz 1491046 1491057)
+- Fix CVE-2017-1000251 (rhbz 1489716 1490906)
+
+* Mon Sep 11 2017 Justin M. Forbes <jforbes@fedoraproject.org> - 4.12.12-300
+- Linux v4.12.12
+- QXL Fixes
+- Fix for xen ballow with AWS (rhbz 1463000)
+
+* Thu Sep 07 2017 Justin M. Forbes <jforbes@fedoraproject.org> - 4.12.11-300
+- Linux v4.12.11
+
+* Thu Aug 31 2017 Justin M. Forbes <jforbes@fedoraproject.org> - 4.12.10-300
+- Fix CVE-2017-14051 (rhbz 1487126 1487127)
+
+* Wed Aug 30 2017 Justin M. Forbes <jforbes@redhat.com>
+- Linux v4.12.10
+- Fix for CVE-2017-13693 (rhbz 1485346 1485356)
+- Fix for CVE-2017-13694 (rhbz 1485348)
+- Fix for CVE-2017-13695 (rhbz 1485349)
+- Fix for raid 1/10 (rhbz 1484587)
+
+* Fri Aug 25 2017 Justin M. Forbes <jforbes@fedoraproject.org> - 4.12.9-300
+- Linux v4.12.9
+- For for AMD Stoney GPU (rhbz 1485086)
+- Fix for RT3573 regression (rhbz 1480829)
+- Fix for CVE-2017-7558 (rhbz 1480266 1484810)
+- Fix for kvm_stat (rhbz 1483527)
+
+* Thu Aug 17 2017 Justin M. Forbes <jforbes@fedoraproject.org>
+- Fix for vmalloc_32 crash (rhbz 1482249 1482570)
+
+* Thu Aug 17 2017 Justin M. Forbes <jforbes@fedoraproject.org> - 4.12.8-300
+- Linux v4.12.8
+
+* Wed Aug 16 2017 Laura Abbott <labbott@redhat.com>
+- Fix for iio race
+
+* Wed Aug 16 2017 Justin M. Forbes <jforbes@fedoraproject.org>
+- Fix xen CVE-2017-12134 (rhbz 1477656 1481786)
+
+* Mon Aug 14 2017 Justin M. Forbes <jforbes@fedoraproject.org> - 4.12.7-300
+- Linux v4.12.7
+
+* Fri Aug 11 2017 Justin M. Forbes <jforbes@fedoraproject.org> - 4.12.6-300
+- Linux v4.12.6
+- Fix CVE-2017-1000111 (rhbz 1479304 1480464)
+- Fix CVE-2017-1000112 (rhbz 1479307 1480465)
+
+* Fri Aug 11 2017 Dan Horak <dan@danny.cz>
+- disable SWIOTLB on Power (#1480380)
+
+* Fri Aug 11 2017 Josh Boyer <jwboyer@fedoraproject.org>
+- Disable MEMORY_HOTPLUG_DEFAULT_ONLINE on ppc64 (rhbz 1476380)
+
+* Mon Aug 07 2017 Justin M. Forbes <jforbes@fedoraproject.org> - 4.12.5-300
+- Linux v4.12.5
+- Fixes CVE-2017-7533 (rhbz 1468283 1478086)
+
+* Thu Aug 03 2017 Justin M. Forbes <jforbes@fedoraproject.org>
+- Temp fix for QXL (rhbz 1462381)
+- Fix for signed module loading (rhbz 1476467)
+
+* Thu Aug 03 2017 Laura Abbott <labbott@redhat.com>
+- Keep UDF in the main kernel package (rhbz 1471314)
+
+* Thu Jul 27 2017 Justin M. Forbes <jforbes@redhat.com> - 4.12.4-300
+- Linux v4.12.4
+
+* Wed Jul 26 2017 Justin M. Forbes <jforbes@fedoraproject.org>
+- Fix mtx (rhbz 1471302)
+
+* Tue Jul 25 2017 Justin M. Forbes <jforbes@fedoraproject.org>
+- Force python3 for kvm_stat because we can't dep (rhbz 1456722)
+
+* Tue Jul 25 2017 Peter Robinson <pbrobinson@fedoraproject.org> 4.12.3-301
+- Bring in ARM patches from stabilization branch
+
+* Mon Jul 24 2017 Justin M. Forbes <jforbes@fedoraproject.org> - 4.12.3-300
+- Linux v4.12.3
+- Fix rhbz 1431375
+
+* Mon Jul 17 2017 Laura Abbott <labbott@fedoraproject.org> - 4.11.11-300
+- Linux v4.11.11
+- Bring back /dev/port (rhbz 1471429 1451220)
+
+* Wed Jul 12 2017 Peter Robinson <pbrobinson@fedoraproject.org>
+- Build in i2c-rk3x to fix some device boot
+
+* Wed Jul 12 2017 Laura Abbott <labbott@fedoraproject.org> - 4.11.10-300
+- Linux v4.11.10
+
+* Mon Jul 10 2017 Laura Abbott <labbott@fedoraproject.org>
+- Only call pwm_add_table for the first PWM controller (rhbz 1458599)
+
+* Thu Jul 06 2017 Justin M. Forbes <jforbes@fedoraproject.org>
+- CVE-2017-10810 fix virtio-gpu mem leak (rhbz 1468023 1468024)
+
+* Wed Jul 05 2017 Laura Abbott <labbott@fedoraproject.org> - 4.11.9-300
+- Linux v4.11.9
+
+* Thu Jun 29 2017 Laura Abbott <labbott@fedoraproject.org> - 4.11.8-300
+- Linux v4.11.8
+
+* Wed Jun 28 2017 Peter Robinson <pbrobinson@fedoraproject.org>
+- Tweak vc4 vblank for stability
+- Fix for early boot on Dragonboard 410c
+
+* Mon Jun 26 2017 Peter Robinson <pbrobinson@fedoraproject.org>
+- Config improvements for Qualcomm devices
+
+* Mon Jun 26 2017 Laura Abbott <labbott@fedoraproject.org> - 4.11.7-300
+- Linux v4.11.7
+- Make CONFIG_SERIAL_8250_PCI builtin (rhbz 1464709)
+
+* Mon Jun 26 2017 Peter Robinson <pbrobinson@fedoraproject.org>
+- vc4: hopefully improve the vblank crash issues
+
+* Tue Jun 20 2017 Laura Abbott <labbott@fedoraproject.org>
+- Add fix for iptables (rhbz 1459676)
+
+* Tue Jun 20 2017 Laura Abbott <labbott@fedoraproject.org> - 4.11.6-301
+- bump and build
+
+* Mon Jun 19 2017 Laura Abbott <labbott@fedoraproject.org> - 4.11.6-300
+- Linux v4.11.6
+- Fix CVE-2017-1000364 (rhbz 1462819 1461333)
+
+* Mon Jun 19 2017 Peter Robinson <pbrobinson@fedoraproject.org>
+- Add vc4 T-Format support to improve performance
+
+* Fri Jun 16 2017 Laura Abbott <labbott@fedoraproject.org>
+- Fix an auditd race condition (rhbz 1459326)
+
+* Thu Jun 15 2017 Peter Robinson <pbrobinson@fedoraproject.org>
+- Upstream fixes for Cavium platforms
+
+* Wed Jun 14 2017 Laura Abbott <labbott@fedoraproject.org> - 4.11.5-300
+- Linux v4.11.5
+
+* Wed Jun 14 2017 Peter Robinson <pbrobinson@fedoraproject.org>
+- Minor fixes for sun8i-dwmac plus extra device support
+
+* Wed Jun 14 2017 Laura Abbott <labbott@fedoraproject.org>
+- Add fix for EFI BGRT crash (rhbz 1461337)
+
+* Wed Jun 07 2017 Laura Abbott <labbott@fedoraproject.org> - 4.11.4-300
+- Linux v4.11.4
+
+* Wed Jun  7 2017 Peter Robinson <pbrobinson@fedoraproject.org>
+- Add upstream patch set to fix WiFi on HiKey
+- Patch set to fix Raspberry Pi PCM Audio clocking
+
+* Tue Jun 06 2017 Laura Abbott <labbott@redhat.com>
+- Backport hotkey event support for 2017 thinkpad models (rhbz 1459272)
+
+* Tue Jun 06 2017 Laura Abbott <labbott@redhat.com>
+- Enable the vDSO for arm LPAE
+
+* Mon Jun 05 2017 Laura Abbott <labbott@fedoraproject.org> - 4.11.3-302
+- Bump and build once again
+
+* Mon Jun 05 2017 Laura Abbott <labbott@fedoraproject.org>
+- Actually fix ipsec encapsulation problems (rhbz 1458222 1458499)
+
+* Fri Jun 02 2017 Laura Abbott <labbott@fedoraproject.org>
+- Enable Chromebook keyboard backlight (rhbz 1447031)
+
+* Fri Jun 02 2017 Laura Abbott <labbott@fedoraproject.org> - 4.11.3-301
+- Bump and build
+
+* Tue May 30 2017 Laura Abbott <labbott@fedoraproject.org>
+- NVME firmware quirk (rhbz 1455780)
+- Fix for IPv6 tunnels reported on bodhi)
+
+* Tue May 30 2017 Justin M. Forbes <jforbes@fedoraproject.org>
+- Fix for some broadwell issues
+
+* Mon May 29 2017 Peter Robinson <pbrobinson@fedoraproject.org>
+- Updates for ARM devices
+- Build ARM Chromebook specifics on all ARM architectures
+
+* Thu May 25 2017 Laura Abbott <labbott@fedoraproject.org> - 4.11.3-300
+- Linux v4.11.3
+
+* Wed May 24 2017 Peter Robinson <pbrobinson@fedoraproject.org>
+- Various ARM updates
+
+* Mon May 22 2017 Laura Abbott <labbott@fedoraproject.org> - 4.11.2-300
+- Linux v4.11.2
+
+* Mon May 22 2017 Justin M. Forbes <jforbes@fedoraproject.org>
+- Fix CVE-2017-8890 CVE-2017-9074 CVE-2017-9075 CVE-2017-9076 CVE-2017-9077
+  (rhbz 1452688 1450972 1452679 1452691 1452688 1452744)
+
+* Thu May 18 2017 Justin M. Forbes <jforbes@fedoraproject.org>
+- Fix CVE-2017-9059 (rhbz 1451386 1451996)
+
+* Mon May 15 2017 Laura Abbott <labbott@fedoraproject.org> - 4.11.1-300
+- Linux v4.11.1
+
+* Tue May 09 2017 Laura Abbott <labbott@fedoraproject.org>
+- Fix EXPORT_SYMBOL for external modules that shall not be named
+
 * Tue May 09 2017 Laura Abbott <labbott@fedoraproject.org> - 4.11.0-2
 - Bump for updated gcc (rhbz 1448958)
 
